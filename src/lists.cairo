@@ -5,7 +5,8 @@ trait IList<TContractState> {
 
     // WRITES
     fn list_tba(ref self: TContractState, tba_address: ContractAddress, lock_until: u64);
-
+    fn sell_tba(ref self: TContractState, listing_id: u256, buyer: ContractAddress);
+    //  fn upgrade_tba(ref self: TContractState, tba_address: ContractAddress)
     fn set_permission(
         ref self: TContractState,
         permissioned_addresses: Array<ContractAddress>,
@@ -23,6 +24,8 @@ pub mod List {
     use token_bound_accounts::interfaces::{
         IAccount::{IAccountDispatcher, IAccountDispatcherTrait},
     };
+    use openzeppelin_token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+
     use super::IList;
     #[derive(Debug, Drop, Copy, Serde, starknet::Store)]
     pub struct Listing {
@@ -47,11 +50,16 @@ pub mod List {
             let caller = get_caller_address();
 
             let account_dispatcher = IAccountDispatcher { contract_address: tba_address };
+            let (owner, token, _) = account_dispatcher.token();
+
+            // has permission to list
+            let has_permission = account_dispatcher.has_permission(onwer, caller);
+            assert(!has_permission, "Caller Not Permitted");
 
             let (is_locked, _time_remaining) = account_dispatcher.is_locked();
             assert(!is_locked, "Account is Locked");
 
-            // lock for 30 days
+            // lock for certain days
             account_dispatcher.lock(lock_until)
             let listing_count = self.listing_count.read();
             let listing_id = listing_count + 1;
@@ -86,6 +94,43 @@ pub mod List {
         fn get_listing(self: @ContractState, listing_id: u256) -> Listing {
             self.listings.read(listing_id)
         }
+
+        fn sell_tba(self: @ContractState, listing_id: u256, buyer: ContractAddress) {
+            let listing = self.get_listing(listing_id);
+
+            let account_dispatcher = IAccountDispatcher { contract_address: listing.tba_address };
+
+            let (token_contract_address, token, _) = account_dispatcher.token();
+
+            // has permission to list to sell
+            let has_permission = account_dispatcher.has_permission(token_contract_address, caller);
+            assert(!has_permission, "Caller Not Permitted");
+
+            // Create ERC20 dispatcher to interact with the token contract
+            let token_dispatcher = IERC20Dispatcher { contract_address: token };
+
+            let mut calldata = ArrayTrait::new();
+            caller.serialize(ref calldata);
+            buyer.serialize(ref calldata);
+            token_id.serialize(ref calldata);
+
+            let call = Call {
+                to: token_contract_address,
+                selector: selector!("transfer_from"),
+                calldata: ArrayTrait::span(@calldata)
+            };
+
+            // Transfer TBA to another owner  via execute component
+            account_dispatcher.execute(array![call]);
+
+            // Transfer TBA ERC20 token to the new owner.
+            token_dispatcher.transfer_from(caller, buyer, token_id);
+        }
+
+        // fn upgrade_tba(ref self: TContractState, tba_address: ContractAddress) {
+
+        // }
+
         fn set_permission(
             ref self: TContractState,
             permissioned_addresses: Array<ContractAddress>,

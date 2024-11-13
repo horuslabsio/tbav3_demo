@@ -27,6 +27,7 @@ mod TBASocial {
     use demo_workshop::interfaces::IRegistry::{
         IRegistryDispatcher, IRegistryDispatcherTrait, IRegistryLibraryDispatcher
     };
+
     use super::ISocial;
 
     #[storage]
