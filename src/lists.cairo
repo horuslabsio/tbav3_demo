@@ -5,6 +5,15 @@ trait IList<TContractState> {
 
     // WRITES
     fn list_tba(ref self: TContractState, tba_address: ContractAddress, lock_until: u64);
+
+    fn set_permission(
+        ref self: TContractState,
+        permissioned_addresses: Array<ContractAddress>,
+        permissions: Array<bool>
+    );
+    fn has_permission(
+        self: @TContractState, owner: ContractAddress, permissioned_address: ContractAddress
+    ) -> bool;
 }
 
 
@@ -76,6 +85,26 @@ pub mod List {
 
         fn get_listing(self: @ContractState, listing_id: u256) -> Listing {
             self.listings.read(listing_id)
+        }
+        fn set_permission(
+            ref self: TContractState,
+            permissioned_addresses: Array<ContractAddress>,
+            permissions: Array<bool>,
+            tba_address: ContractAddress,
+        ) {
+            let account_dispatcher = IAccountDispatcher { contract_address: tba_address };
+
+            account_dispatcher.set_permission(permissioned_addresses, permissions);
+        }
+        fn has_permission(
+            self: TContractState,
+            owner: ContractAddress,
+            permissioned_address: ContractAddress,
+            tba_address: ContractAddress,
+        ) -> bool {
+            let account_dispatcher = IAccountDispatcher { contract_address: tba_address };
+
+            account_dispatcher.has_permission(owner, permissioned_address);
         }
     }
 }

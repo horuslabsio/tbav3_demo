@@ -12,8 +12,10 @@ token_bound_accounts= { git = "https://github.com/horuslabsio/TBA", branch = "v3
 [dev-dependencies]
 snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.27.0" }
 
+
 [[target.starknet-contract]]
-sierra = true
+allowed-libfuncs-list.name = "experimental"
+casm = true
 
 [scripts]
 test = "snforge test"
