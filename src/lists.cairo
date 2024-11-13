@@ -114,6 +114,10 @@ pub mod List {
             buyer.serialize(ref calldata);
             token_id.serialize(ref calldata);
 
+            // check for valid signer on caller
+            let is_valid_signer = account_dispatcher.is_valid_signer(caller);
+            assert(!is_valid_signer, "Not a Valid Signer");
+
             let call = Call {
                 to: token_contract_address,
                 selector: selector!("transfer_from"),
